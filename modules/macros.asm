@@ -28,6 +28,9 @@
 ; Status Bits: [ 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 ]
 ;   0 => EMERGENCY
 ;   1 => DEBOUNCE FLAG
+;   2 => LIFT MOVING
+;   3 => DOOR MOVING
+;   4 => DOOR OPEN/CLOSE
 
 ; Constants defined to set/clr bits in the Lift "STATUS" register (r22)
 .equ EMERGENCY_ON  = 0b00000001

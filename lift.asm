@@ -2,8 +2,9 @@
 
 .equ ONE_SECOND     = 7812
 .equ DEBOUNCE_LIMIT = 1560
-.equ OPEN_PATTERN   = 0x00
-.equ CLOSE_PATTERN  = 0xFF
+.equ DOOR_OPEN      = 0x00
+.equ DOOR_CLOSE     = 0xFF
+.equ DOOR_MOVING    = 0x55
 
 ; use a register as a "status" register ??
 
@@ -80,7 +81,7 @@ RESET:
     out PORTA, temp1
 
     ; Initial LCD Message
-    ldi temp1, CLOSE_PATTERN
+    ldi temp1, DOOR_MOVING
     out PORTC, temp1
 
     ; Clear Counters
@@ -235,15 +236,41 @@ star:
     ; TODO: jmp to Emergency Function, stop all activity and goto Floor 0
     ; Emergency Function: Do Open/Close process at Floor 0. Strobe LED should
     ; blink several times. Lift should resume only when * is pressed again.
+    compare_status_bit DEBOUNCE_ON
+    breq jump_main1
+    set_status_bit_on DEBOUNCE_ON
+    compare_status_bit EMERGENCY_ON
+    breq emergency_end
+    rjmp emergency_start
+
+jump_main1:
+    jmp main
+
+emergency_end:
+    lcd_clear_prompt
+    lcd_pre_prompt
+    do_lcd_data '0' ; since we should be on Floor 0
+    set_status_bit_off EMERGENCY_OFF
+    rjmp main
+
+emergency_start:
     lcd_clear_prompt
     lcd_emergency_message
     set_status_bit_on EMERGENCY_ON
     rjmp main
 
 convert_end:
+    compare_status_bit EMERGENCY_ON
+    breq jump_main2
     compare_status_bit DEBOUNCE_ON
-    breq jump_main
+    breq jump_main2
     set_status_bit_on DEBOUNCE_ON
+    ; TODO:
+    ; actually shouldn't write to the screen
+    ; should push the floor number to the FloorQueue
+    ; should check if we are already in motion
+    ; if True, push floor number to FloorQueue
+    ; else start moving lift
     push temp1
     lcd_clear_prompt
     lcd_pre_prompt
@@ -251,7 +278,7 @@ convert_end:
     print_digit temp1
     rjmp main
 
-jump_main:
+jump_main2:
     jmp main
 
 end: rjmp end
