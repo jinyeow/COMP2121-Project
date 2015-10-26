@@ -1,7 +1,11 @@
 # COMP2121 Project - UNSW Semester 2 2015
 
-## Lift Emulator
+## Table Of Contents:
+1. [Requirements] (#requirements)
+2. [Advanced Features] (#advanced-features)
+3. [Other Documentation for Submission] (#other-documentation-for-submission)
 
+## Lift Emulator
 Develop a lift emulator system using AVR.
 
 ### Requirements:
@@ -42,6 +46,6 @@ closing, re-open and continue operating as in Point 5.
 remain open until the button is released.
   4. The Open button will *NOT* function while the lift is moving between floors.
 
-### Other Documentation for submission:
+### Other Documentation for Submission:
 * User Manual
 * Design Manual
