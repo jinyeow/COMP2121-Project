@@ -6,7 +6,8 @@
 3. [Other Documentation for Submission] (#other-documentation-for-submission)
 
 ## Lift Emulator
-Develop a lift emulator system using AVR.
+Develop a lift emulator system using AVR assembly. Using the Atmega2560 and an
+Arduino Board.
 
 ### Requirements:
 1. Lift travels up and down 10 floors, numbered 0-9.
