@@ -68,10 +68,11 @@ RESET:
     out PORTF, temp1
     out PORTA, temp1
 
+    ; Initialise Lift on Floor 0
     lcd_clear_prompt
-    ; lcd_pre_prompt
-    ; do_lcd_data '0'
-    lcd_emergency_message
+    lcd_pre_prompt
+    do_lcd_data '0'
+    ; lcd_emergency_message
 
 main:
 

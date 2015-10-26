@@ -57,7 +57,7 @@
 .endmacro
 
 .macro lcd_new_line
-    do_lcd_data 0b11000000 ; move to next line
+    do_lcd_command 0b11000000 ; move to next line
 .endmacro
 
 .macro lcd_emergency_message
