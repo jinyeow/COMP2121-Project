@@ -2,10 +2,10 @@
 
 .equ SECOND = 7812
 .equ DEBOUNCE_LIMIT = 1560
-.equ UP_PATTERN =
-.equ DOWN_PATTERN =
-.equ OPEN_PATTERN =
-.equ CLOSE_PATTERN =
+; .equ UP_PATTERN =
+; .equ DOWN_PATTERN =
+; .equ OPEN_PATTERN =
+; .equ CLOSE_PATTERN =
 
 ; use a register as a "status" register ??
 
@@ -69,6 +69,8 @@ RESET:
     out PORTA, temp1
 
     lcd_clear_prompt
+    ; lcd_pre_prompt
+    ; do_lcd_data '0'
     lcd_emergency_message
 
 main:

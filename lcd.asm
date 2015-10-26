@@ -1,5 +1,3 @@
-.include "m2560def.inc"
-
 ; LCD Related Macros, Definitions, Functions, etc
 
 .equ LCD_RS = 7
@@ -12,13 +10,13 @@
 ; 4 cycles per iteration - setup/call-return overhead
 
 .macro do_lcd_command
-  ldi r16, @0
+  ldi temp1, @0
   rcall lcd_command
   rcall lcd_wait
 .endmacro
 
 .macro do_lcd_data
-  ldi r16, @0
+  ldi temp1, @0
   rcall lcd_data
   rcall lcd_wait
 .endmacro
@@ -63,6 +61,9 @@
 .endmacro
 
 .macro lcd_emergency_message
+    do_lcd_data ' '
+    do_lcd_data ' '
+    do_lcd_data ' '
     do_lcd_data 'E'
     do_lcd_data 'm'
     do_lcd_data 'e'
@@ -72,7 +73,10 @@
     do_lcd_data 'n'
     do_lcd_data 'c'
     do_lcd_data 'y'
-    do_lcd_data 0b11000000 ; move to next line
+    do_lcd_command 0b11000000 ; move to next line
+    do_lcd_data ' '
+    do_lcd_data ' '
+    do_lcd_data ' '
     do_lcd_data 'C'
     do_lcd_data 'a'
     do_lcd_data 'l'
