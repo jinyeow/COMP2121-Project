@@ -53,6 +53,9 @@
     sts FloorNumber, r2
 .endmacro
 
+;#######################
+;#       DSEG          #
+;#######################
 .dseg
 TempCounter:
     .byte 2
@@ -70,6 +73,9 @@ FloorQueue:                ; Multiple requests can be queued up
 DoorStatus:
     .byte 1 ; Status can be: closing, closed, opening, open
 
+;#######################
+;#       CSEG          #
+;#######################
 .cseg
 .org 0x0000
     jmp RESET
@@ -133,6 +139,9 @@ RESET:
 
     rjmp main
 
+;#######################
+;# INTERRUPT ROUTINES  #
+;#######################
 Timer0OVF:
     in temp1, SREG
     push temp1                      ; Prologue starts
@@ -196,6 +205,9 @@ EndIF:
     out SREG, temp1
     reti                            ; Return from the interrupt
 
+;#######################
+;#      MAIN CODE      #
+;#######################
 main:
     ldi cmask, INITCOLMASK   ; initial column mask
     clr col                  ; initial column
