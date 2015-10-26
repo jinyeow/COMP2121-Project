@@ -17,14 +17,14 @@ Develop a lift emulator system using AVR.
 6. Right Push Button (PB0) is the 'Close' button. Operates as follows:
   * If PB0 is pushed while the door is open, start closing the door immediately.
   * The 'Close' button will *NOT* cancel the opening sequence (just the waiting sequence).
-7. '*' is the emergency button. Pushing this stops lift operations. The lift
+7. '\*' is the emergency button. Pushing this stops lift operations. The lift
   should immediately head toward the ground floor (Floor 0) and then open & close
   so people can get out. Then the lift should halt. The LCD then shows this
   message:
       "Emergency
        Call 000"
   The strobe LED should blink several times/second to denote the alarm.
-  The lift resumes normal operations again when the '*' is pressed again.
+  The lift resumes normal operations again when the '\*' is pressed again.
 8. The LEDs should indicate the direction the lift is moving and the status
   of the door (i.e. open, close, moving).
 9. Display current floor number on the LCD.
