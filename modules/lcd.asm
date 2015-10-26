@@ -86,3 +86,12 @@
     do_lcd_data '0'
     do_lcd_data '0'
 .endmacro
+
+;#######################
+;#    PRINT MACROS     #
+;#######################
+.macro print_digit
+    mov temp2, @0
+    subi temp2, -'0'
+    do_lcd_data_reg temp2
+.endmacro

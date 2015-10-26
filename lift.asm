@@ -2,8 +2,13 @@
 
 .equ ONE_SECOND     = 7812
 .equ DEBOUNCE_LIMIT = 1560
-.equ DOOR_OPEN      = 0x00
-.equ DOOR_CLOSE     = 0xFF
+
+; Door open is two bars at each end of the 8 bits of the LED to signify the open
+; doors of a lift
+; Door closed is all LEDs lit up
+; Door moving will be a split pattern/shifting split pattern
+.equ DOOR_OPEN      = 0x81
+.equ DOOR_CLOSED    = 0xFF
 .equ DOOR_MOVING    = 0x55
 
 ; use a register as a "status" register ??
@@ -31,6 +36,22 @@
 ;#######################
 .include "modules/lcd.asm"
 .include "modules/macros.asm"
+
+;#######################
+;#      MACROS         #
+;#######################
+.macro print_current_floor
+    lds r2, FloorNumber
+    print_digit r2
+.endmacro
+
+; TODO: check this works
+.macro update_floor_number
+    lds r2, FloorNumber
+    ldi r3, @0
+    add r2, r3
+    sts FloorNumber, r2
+.endmacro
 
 .dseg
 TempCounter:
@@ -81,7 +102,8 @@ RESET:
     out PORTA, temp1
 
     ; Initial LCD Message
-    ldi temp1, DOOR_MOVING
+    ; ldi temp1, DOOR_OPEN
+    ldi temp1, DOOR_CLOSED
     out PORTC, temp1
 
     ; Clear Counters
@@ -89,6 +111,9 @@ RESET:
     clear SecondCounter               ; Initialize the second counter to 0
     clear FloorNumber
     clear DebounceCounter
+
+    ; Clear Lift "STATUS" register
+    set_status_bit_off CLEAR_FLAGS
 
     ; Timer Settings and Pre-Scaling
     ldi temp1, 0b00000000
@@ -235,11 +260,12 @@ zero:
 star:
     ; TODO: jmp to Emergency Function, stop all activity and goto Floor 0
     ; Emergency Function: Do Open/Close process at Floor 0. Strobe LED should
-    ; blink several times. Lift should resume only when * is pressed again.
+    ; blink several times.
     compare_status_bit DEBOUNCE_ON
     breq jump_main1
     set_status_bit_on DEBOUNCE_ON
-    compare_status_bit EMERGENCY_ON
+
+    compare_status_bit EMERGENCY_ON ; Lift should resume only when * is pressed again.
     breq emergency_end
     rjmp emergency_start
 
@@ -249,7 +275,7 @@ jump_main1:
 emergency_end:
     lcd_clear_prompt
     lcd_pre_prompt
-    do_lcd_data '0' ; since we should be on Floor 0
+    do_lcd_data '0' ; since we should be on Floor 0 - maybe change this to the 'CURRENT' floor
     set_status_bit_off EMERGENCY_OFF
     rjmp main
 

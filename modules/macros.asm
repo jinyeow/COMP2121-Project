@@ -14,15 +14,6 @@
 .endmacro
 
 ;#######################
-;#    PRINT MACROS     #
-;#######################
-.macro print_digit
-    mov temp2, @0
-    subi temp2, -'0'
-    do_lcd_data_reg temp2
-.endmacro
-
-;#######################
 ;#   STATUS MACROS     #
 ;#######################
 ; Status Bits: [ 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 ]
@@ -33,6 +24,7 @@
 ;   4 => DOOR OPEN/CLOSE
 
 ; Constants defined to set/clr bits in the Lift "STATUS" register (r22)
+.equ CLEAR_FLAGS   = 0x00
 .equ EMERGENCY_ON  = 0b00000001
 .equ EMERGENCY_OFF = 0b11111110
 .equ DEBOUNCE_ON   = 0b00000010
