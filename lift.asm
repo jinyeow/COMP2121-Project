@@ -1,11 +1,9 @@
 .include "m2560def.inc"
 
-.equ SECOND = 7812
+.equ ONE_SECOND     = 7812
 .equ DEBOUNCE_LIMIT = 1560
-; .equ UP_PATTERN =
-; .equ DOWN_PATTERN =
-.equ OPEN_PATTERN = 0x00
-.equ CLOSE_PATTERN = 0xFF
+.equ OPEN_PATTERN   = 0x00
+.equ CLOSE_PATTERN  = 0xFF
 
 ; use a register as a "status" register ??
 
@@ -45,7 +43,8 @@ MoveTimer:                 ; Lifts take 2 seconds to traverse floors
 FloorNumber:               ; Current Floor Number
     .byte 1
 FloorQueue:                ; Multiple requests can be queued up
-    .byte 4
+    .byte 4 ; Maximum of 10 floors in the queue - may have to increase size
+            ; e.g. .byte 5, 4 bits to represent a floor number ??
 DoorStatus:
     .byte 1 ; Status can be: closing, closed, opening, open
 
@@ -113,15 +112,58 @@ Timer0OVF:
     push temp1                      ; Prologue starts
     push YH                         ; Save all conflict registers in the prologue
     push YL
+    push r27
+    push r26
     push r25
     push r24                        ; Prologue ends
                                     ; Load the vlaue of the temporary counter
-    lds r24, TempCounter
-    lds r25, TempCounter+1
+    CheckDebounceSet:
+        compare_status_bit DEBOUNCE_ON
+        breq NewDebounceCount
+        rjmp NewSecond
+
+    NewDebounceCount:
+        lds r26, DebounceCounter
+        lds r27, DebounceCounter+1
+        adiw r27:r26, 1
+
+        ldi temp1, high(DEBOUNCE_LIMIT)
+        cpi r26, low(DEBOUNCE_LIMIT)
+        cpc r27, temp1
+        brne KeepDebouncing
+
+        set_status_bit_off DEBOUNCE_OFF
+        clear DebounceCounter
+        clr r26
+        clr r27
+
+    NewSecond:
+        lds r24, TempCounter
+        lds r25, TempCounter+1
+        adiw r25:r24, 1
+
+        ldi temp1, high(ONE_SECOND)
+        cpi r24, low(ONE_SECOND)
+        cpc r25, temp1
+        brne NotSecond
+
+    rjmp EndIF
+
+NotSecond:
+    sts TempCounter, r24
+    sts TempCounter+1, r25
+    rjmp EndIF
+
+KeepDebouncing:
+    sts DebounceCounter, r26
+    sts DebounceCounter+1, r27
+    rjmp EndIF
 
 EndIF:
     pop r24                         ; Epilogue starts
     pop r25                         ; Restore all conflict registers from the stack
+    pop r26
+    pop r27
     pop YL
     pop YH
     pop temp1
@@ -195,14 +237,21 @@ star:
     ; blink several times. Lift should resume only when * is pressed again.
     lcd_clear_prompt
     lcd_emergency_message
-    set_emergency
+    set_status_bit_on EMERGENCY_ON
     rjmp main
 
 convert_end:
+    compare_status_bit DEBOUNCE_ON
+    breq jump_main
+    set_status_bit_on DEBOUNCE_ON
+    push temp1
     lcd_clear_prompt
     lcd_pre_prompt
-    ldi temp1, 3
+    pop temp1
     print_digit temp1
+    rjmp main
+
+jump_main:
     jmp main
 
 end: rjmp end

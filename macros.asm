@@ -25,10 +25,27 @@
 ;#######################
 ;#   STATUS MACROS     #
 ;#######################
-.macro set_emergency
-    sbr status, 1
+; Status Bits: [ 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 ]
+;   0 => EMERGENCY
+;   1 => DEBOUNCE FLAG
+
+; Constants defined to set/clr bits in the Lift "STATUS" register (r22)
+.equ EMERGENCY_ON  = 0b00000001
+.equ EMERGENCY_OFF = 0b11111110
+.equ DEBOUNCE_ON   = 0b00000010
+.equ DEBOUNCE_OFF  = 0b11111101
+
+; For the following macros, @0 should be one of the above defined constants
+.macro set_status_bit_on
+    ori status, @0
 .endmacro
 
-.macro clr_emergency
-    sbr status, 0
+.macro set_status_bit_off
+    andi status, @0
+.endmacro
+
+.macro compare_status_bit
+    mov temp2, status
+    andi temp2, @0
+    cpi temp2, @0
 .endmacro
