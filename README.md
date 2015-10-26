@@ -34,13 +34,13 @@ Develop a lift emulator system using AVR.
 ### Advanced Features:
 Use left push button (PB1) as the 'Open' button inside the lift. It should
 operate as follows:
-1. If the Open button is pushed while the lift is stopped at a floor, it should
+  1. If the Open button is pushed while the lift is stopped at a floor, it should
 open according to the procedure in Point 5.
-2. If the Open button is pushed while the lift is closing, the door should stop
+  2. If the Open button is pushed while the lift is closing, the door should stop
 closing, re-open and continue operating as in Point 5.
-3. If the Open button is held down while the door is open, the door should
+  3. If the Open button is held down while the door is open, the door should
 remain open until the button is released.
-4. The Open button will *NOT* function while the lift is moving between floors.
+  4. The Open button will *NOT* function while the lift is moving between floors.
 
 ### Other Documentation for submission:
 * User Manual
