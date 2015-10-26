@@ -28,8 +28,8 @@
 ;#######################
 ;#     MODULES         #
 ;#######################
-.include "lcd.asm"
-.include "macros.asm"
+.include "modules/lcd.asm"
+.include "modules/macros.asm"
 
 .dseg
 TempCounter:
