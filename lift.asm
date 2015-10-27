@@ -11,7 +11,9 @@
 .equ DOOR_CLOSED    = 0xFF
 .equ DOOR_MOVING    = 0x55
 
-; use a register as a "status" register ??
+; LIFT "STATUS" REGISTER
+; bit 0 is emergency bit, set if * pressed, else clear
+.def status = r22
 
 ;#######################
 ;#   KEYPAD DEFS       #
@@ -22,9 +24,6 @@
 .def cmask = r19           ; mask for current column during scan
 .def temp1 = r20
 .def temp2 = r21
-
-; LIFT "STATUS" REGISTER bit 0 is emergency bit, set if * pressed, else clear
-.def status = r22
 
 .equ PORTLDIR    = 0xF0    ; PD7-4: output, PD3-0:input
 .equ INITCOLMASK = 0xEF    ; scan from the rightmost column
@@ -67,8 +66,14 @@ MoveTimer:                 ; Lifts take 2 seconds to traverse floors
     .byte 2
 FloorNumber:               ; Current Floor Number
     .byte 1
+FloorBits:
+    .byte 2                ; Represent Lift's position as a bit to be shifted
+                           ; left/right to denote moving up/down
+                           ; by shifting left/right respectively
+                           ; which can then be compared with FloorQueue to
+                           ; determine if we need to open/close the door
 FloorQueue:                ; Multiple requests can be queued up
-    .byte 4 ; Maximum of 10 floors in the queue - may have to increase size
+    .byte 2 ; Maximum of 10 floors in the queue - may have to increase size
             ; e.g. .byte 5, 4 bits to represent a floor number ??
 DoorStatus:
     .byte 1 ; Status can be: closing, closed, opening, open
@@ -116,7 +121,13 @@ RESET:
     clear TempCounter                 ; Initialize the temporary counter to 0
     clear SecondCounter               ; Initialize the second counter to 0
     clear FloorNumber
+    clear FloorQueue
     clear DebounceCounter
+    clear FloorBits
+
+    ; Set FloorBits to Floor 0 initially.
+    ldi r24, FLOOR_0
+    sts FloorBits, r24
 
     ; Clear Lift "STATUS" register
     set_status_bit_off CLEAR_FLAGS
@@ -133,7 +144,6 @@ RESET:
     lcd_clear_prompt
     lcd_pre_prompt
     do_lcd_data '0'
-    ; lcd_emergency_message
 
     sei                               ; Enable global interrupt
 
@@ -181,6 +191,8 @@ Timer0OVF:
         cpi r24, low(ONE_SECOND)
         cpc r25, temp1
         brne NotSecond
+
+    ; Count Time for Door open/close + Lift Travel
 
     rjmp EndIF
 
@@ -304,7 +316,6 @@ convert_end:
     breq jump_main2
     set_status_bit_on DEBOUNCE_ON
     ; TODO:
-    ; actually shouldn't write to the screen
     ; should push the floor number to the FloorQueue
     ; should check if we are already in motion
     ; if True, push floor number to FloorQueue
@@ -320,6 +331,23 @@ jump_main2:
     jmp main
 
 end: rjmp end
+
+;#######################
+;#   LIFT FUNCTIONS    #
+;#######################
+call_lift:
+    ; add floor to the queue (bit string?)
+    push temp1
+    push r24
+    push r25
+
+    ; Get the bit string for Floors
+    ; Bit 0 = Not Called
+    ; Bit 1 = Called
+
+    pop r25
+    pop r24
+    pop temp1
 
 ;#######################
 ;#    LCD FUNCTIONS    #
