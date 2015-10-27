@@ -13,10 +13,18 @@
     st Y, temp1
 .endmacro
 
+; The macro clears a byte (1 byte) in a memory
+; the parameter @0 is the memory address for that byte
+.macro clear_byte
+    ldi YL, low(@0)    ; load the memory address to Y
+    clr temp1
+    st Y, temp1        ; clear the byte at @0 in SRAM
+.endmacro
+
 ;#######################
 ;#   STATUS MACROS     #
 ;#######################
-; Status Bits: [ 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 ]
+; Status Bits: LSB [ 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 ] MSB
 ;   0 => EMERGENCY
 ;   1 => DEBOUNCE FLAG
 ;   2 => LIFT MOVING
@@ -71,6 +79,20 @@
 .equ FLOOR_8 = 0b00000001
 .equ FLOOR_9 = 0b00000010
 
+.macro get_floor_in_bits
+    push temp1
+
+    NotFloor:
+        cpi temp1, 1
+        brlt FloorFound
+        dec temp1
+        lsl @0
+        rjmp NotFloor
+    FloorFound:
+
+    pop temp1
+.endmacro
+
 ; Move the "current floor" represented by a bit in a WORD up
 .macro move_current_floor_up
     push temp1
@@ -113,20 +135,18 @@
 
 ; Floors 0 - 7
 .macro call_floor_low
-    push temp1
     push r25
     push r24
 
     lds r24, FloorQueue
     lds r25, FloorQueue+1
-    ori r24, @0
+    or r24, @0
 
     sts FloorQueue, r24
     sts FloorQueue+1, r25
 
     pop r24
     pop r25
-    pop temp1
 .endmacro
 
 ; Floors 8 & 9
@@ -137,7 +157,7 @@
 
     lds r24, FloorQueue
     lds r25, FloorQueue+1
-    ori r25, @0
+    or r25, @0
 
     sts FloorQueue, r24
     sts FloorQueue+1, r25
@@ -179,6 +199,23 @@
 
     sts FloorQueue, r24
     sts FloorQueue+1, r25
+
+    pop r24
+    pop r25
+    pop temp1
+.endmacro
+
+.macro has_floor_calls
+    push temp1
+    push r25
+    push r24
+
+    lds r24, FloorQueue
+    lds r25, FloorQueue+1
+
+    ldi temp1, 0
+    cpi r24, 0
+    cpc r25, temp1
 
     pop r24
     pop r25

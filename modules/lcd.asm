@@ -30,9 +30,11 @@
 .endmacro
 
 .macro do_lcd_data_reg
+    push temp1
     mov temp1, @0
     rcall lcd_data
     rcall lcd_wait
+    pop temp1
 .endmacro
 
 .macro lcd_clear_prompt
@@ -91,7 +93,9 @@
 ;#    PRINT MACROS     #
 ;#######################
 .macro print_digit
+    push temp2
     mov temp2, @0
     subi temp2, -'0'
     do_lcd_data_reg temp2
+    pop temp2
 .endmacro
