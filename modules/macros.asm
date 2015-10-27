@@ -87,6 +87,7 @@
         brlt FloorFound
         dec temp1
         lsl @0
+        rol @1
         rjmp NotFloor
     FloorFound:
 
@@ -133,31 +134,16 @@
     pop temp1
 .endmacro
 
-; Floors 0 - 7
-.macro call_floor_low
-    push r25
-    push r24
-
-    lds r24, FloorQueue
-    lds r25, FloorQueue+1
-    or r24, @0
-
-    sts FloorQueue, r24
-    sts FloorQueue+1, r25
-
-    pop r24
-    pop r25
-.endmacro
-
-; Floors 8 & 9
-.macro call_floor_high
+.macro update_floor_queue
+    push temp2
     push temp1
     push r25
     push r24
 
     lds r24, FloorQueue
     lds r25, FloorQueue+1
-    or r25, @0
+    or r24, @0
+    or r25, @1
 
     sts FloorQueue, r24
     sts FloorQueue+1, r25
@@ -165,6 +151,7 @@
     pop r24
     pop r25
     pop temp1
+    pop temp2
 .endmacro
 
 .macro leave_floor_queue_low
@@ -216,6 +203,24 @@
     ldi temp1, 0
     cpi r24, 0
     cpc r25, temp1
+
+    pop r24
+    pop r25
+    pop temp1
+.endmacro
+
+.macro print_queue
+    push temp1
+    push r25
+    push r24
+
+    clr r24
+    clr r25
+    lds r24, FloorQueue
+    lds r25, FloorQueue+1
+    print_digit r25
+    do_lcd_data ':'
+    print_digit r24
 
     pop r24
     pop r25
