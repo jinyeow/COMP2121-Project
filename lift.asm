@@ -259,7 +259,7 @@ Timer0OVF:
         sts SecondCounter, r28
         sts SecondCounter+1, r29
         brge ReachedFloor
-        lds r26, CurrentPattern
+        lds r26, CurrentPattern    ; out end position of lift to LEDs
         lds r27, CurrentPattern+1
         out PORTC, r26
         out PORTG, r27
@@ -376,98 +376,52 @@ MoveLift: ; Activate lift
     ; determine if going UP or DOWN
     lds r26, FloorBits
     lds r27, FloorBits+1
+    mov r6, r26 ; make a copy of the FloorBits (current floor represented as bits)
+    mov r7, r27 ; for use later for shifting and pattern
 
-    out PORTC, r26
+    out PORTC, r26 ; out the start position of the lift to LEDs
     out PORTG, r27
 
     lds r24, FloorQueue
     lds r25, FloorQueue+1
+    mov r4, r24 ; make a copy of the Queue
+    mov r5, r25
 
     cp r26, r24   ; If FloorQueue < FloorBits then that means only Lower Floors
                   ; were called. Therefore DIR DOWN
     cpc r27, r25
     brge SetDirDown
-    rjmp SetDirUp
 
-    ; ; scan by taking current floor bits do max floor - curr floor and shift left
-    ; ; that many times.
-    ; ldi temp2, MAX_FLOOR
-    ; lds temp3, FloorNumber
-    ; sub temp2, temp3 ; MAX_FLOOR - current floor number
-    ;                  ; temp2 holds counter for left shifting for scannning
-    ;                  ; currently off-by-one error MAX - INITIAL FLOOR = 9
-    ;                  ; but since we're on Floor 0 we only need to shift 8 times
-    ;                  ; Fine for now. Add a subi temp2, 1 later.
-    ; ScanHigher:
-    ;     cpi temp2, 1
-    ;     brlt ScanLowerPre
-    ;     dec temp2
-    ;     lsl r26          ; left shift r27:r26 (FloorBits) to check if any floors
-    ;     rol r27          ; called that are HIGHER than the current floor
-
-    ;     push r26
-    ;     push r27
-    ;     and r26, r24
-    ;     and r27, r25
-    ;     cpi r26, 0
-    ;     brne SetDirUpTrue
-    ;     cpi r27, 0       ; if r27:r26 == 0, then floor is not set/called
-    ;     brne SetDirUpTrue
-    ;     pop r27
-    ;     pop r26
-    ;     rjmp ScanHigher
-
-    ; ; set a bool for higher floors if you find one
-    ; SetDirUpTrue:
-    ;     ser r31
-
-    ; ; and vice versa for lower floors
-    ; ScanLowerPre:
-    ;     lds r26, FloorBits ; Reset r27:r26 to current floor's bits
-    ;     lds r27, FloorBits+1
-    ;     lds temp2, FloorNumber
-    ;     ldi temp3, MIN_FLOOR
-    ;     sub temp2, temp3
-    ;     ScanLower:
-    ;         cpi temp2, 0
-    ;         breq SetDirUp
-    ;         dec temp2
-    ;         lsr r26
-    ;         ror r27
-
-    ;         push r26
-    ;         push r27
-    ;         and r26, r24
-    ;         and r27, r25
-    ;         cpi r26, 0
-    ;         brne SetDirDownTrue
-    ;         cpi r27, 0       ; if r27:r26 == 0, then floor is not set/called
-    ;         brne SetDirDownTrue
-    ;         pop r27
-    ;         pop r26
-    ;         rjmp ScanLower
-
-    ; SetDirDownTrue:
-    ;     ser r30
-
-    ; ; if found both then continue in curr dir
-    ; ; else change as appropriate
-    ; cpi r31, 0xFF ; No higher floors if not equal
-    ; brne SetDirDown
-    ; cpi r30, 0xFF ; No lower floors if not equal
-    ; brne SetDirUp
-    ; rjmp ContinueInCurrentDirection
+    ; Subtract 1 from the FloorBits. So ALL the lower "floors" (bits) will be set
+    ; e.g. if on Floor 3 [00001000] (value is 8) and you sub 1 then
+    ; value becomes 7 and the bits are: [00000111].
+    ; Thus if you AND those bits with the FloorQueue you can check if any bits
+    ; are set.
+    ; If none (i.e. if r26 is 0) then ALL called floors MUST BE higher,
+    ; so Set the Direction to Up.
+    ; Else, go to PreContinue which will move in the current direction.
+    sbiw r27:r26, 1
+    and r26, r4
+    cpi r26, 0x00
+    breq SetDirUp
+    rjmp PreContinue
 
     SetDirDown:
         set_status_bit_off DIR_DOWN
-        lsr r26
-        ror r27
+        lsr r6
+        ror r7
         rjmp ContinueInCurrentDirection
 
     SetDirUp:
-        lsl r26
-        rol r27
         set_status_bit_on DIR_UP
+        lsl r6
+        rol r7
+        rjmp ContinueInCurrentDirection
+
+    PreContinue:
+        compare_status_bit DIR_UP
+        breq SetDirUp
+        rjmp SetDirDown
 
     ContinueInCurrentDirection:
         ; Spin Motor
@@ -476,10 +430,11 @@ MoveLift: ; Activate lift
         ; clr temp2
         ; sts OCR3BH, temp2
 
-    ; out shifting pattern to LEDs
-
-    sts CurrentPattern, r26
-    sts CurrentPattern+1, r27
+    ; Shift pattern to represent the next floor (up or down) as part of the
+    ; above SetDir[Up|Down]
+    ; Then write the pattern to CurrentPattern
+    sts CurrentPattern, r6
+    sts CurrentPattern+1, r7
 
     pop r30
     pop r31
