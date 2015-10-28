@@ -655,7 +655,6 @@ zero:
     jmp convert_end
 
 star:
-    ; TODO: jmp to Emergency Function, stop all activity and goto Floor 0
     ; Emergency Function: Do Open/Close process at Floor 0.
     ; Strobe LED should blink several times.
     compare_status_bit DEBOUNCE_ON
@@ -670,14 +669,13 @@ jump_main1:
     jmp main
 
 emergency_end:
-    lcd_clear_prompt
-    lcd_pre_prompt
+    lcd_clear_prompt ; change LCD to the default message of "FLOOR: N"
+    lcd_pre_prompt   ; where 'N' is the current floor
     print_current_floor
-    set_status_bit_off EMERGENCY_OFF
-    eor strobe_pattern, strobe_pattern
+    set_status_bit_off EMERGENCY_OFF ; clear EMERGENCY bit in "STATUS" reg
+    eor strobe_pattern, strobe_pattern ; Turn off the strobe
     rjmp main
 
-; TODO: set strobe light to blink several times per second
 ; strobe is the LED pin next to MOT connect to PORTB (PB1)
 emergency_start:
     lcd_clear_prompt
