@@ -651,7 +651,12 @@ emergency_start:
     lcd_clear_prompt
     lcd_emergency_message
     set_status_bit_on EMERGENCY_ON ; set EMERGENCY_ON bit in "STATUS" register (r22)
+    lds r24, FloorNumber ; If already at Floor 0 do nothing
+    cpi r24, 0
+    brne ForceLiftToZero
+    rjmp main
 
+    ForceLiftToZero:
     ; if door is open close it
     compare_status_bit DOOR_IS_OPEN
     brne StopOpening
@@ -667,10 +672,10 @@ emergency_start:
     clear SecondCounter
     ldi r24, FLOOR_0
     sts FloorQueue, r24
-    sts FloorBits, r24
+    ; sts FloorBits, r24
     clr r24
     sts FloorQueue+1, r24
-    sts FloorBits+1, r24
+    ; sts FloorBits+1, r24
     set_status_bit_off DIR_DOWN
     rjmp main
 
