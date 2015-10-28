@@ -1,8 +1,12 @@
-;
-; Lift.asm - UNSW COMP2121 Project - Semester 2 2015
-; Lift emulator using AVR and the arduino board.
-; written by Jin-Yeow Justin Puah
-;
+;##############################################################################
+;# Lift.asm - UNSW COMP2121 Project - Semester 2 2015                         #
+;# -----------------------------------------------------------------          #
+;# Lift emulator using AVR and the arduino board.                             #
+;# Link to Project Specification:                                             #
+;# http://webapps.cse.unsw.edu.au/webcms2/course/index.php?cid=2430           #
+;#                                                                            #
+;#                                  written by Jin-Yeow Justin Puah           #
+;##############################################################################
 
 .include "m2560def.inc"
 
