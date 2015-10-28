@@ -15,7 +15,8 @@
 ; Door moving will be a split pattern/shifting split pattern
 .equ DOOR_OPEN   = 0x81
 .equ DOOR_CLOSED = 0xFF
-.equ DOOR_MOVING_UP = 0x0101
+
+.equ LIFT_MOVING_UP = 0x1C1C
 
 .equ MOTOR_OFF   = 0x00
 .equ MOTOR_ON    = 0xFF
@@ -23,8 +24,6 @@
 ; LIFT "STATUS" REGISTER
 ; bit 0 is emergency bit, set if * pressed, else clear
 .def status           = r22
-.def min_floor_called = r7
-.def max_floor_called = r8
 
 ;#######################
 ;#   KEYPAD DEFS       #
@@ -73,8 +72,6 @@ SecondCounter:
     .byte 2
 DebounceCounter:
     .byte 2
-MoveTimer:                 ; Lifts take 2 seconds to traverse floors
-    .byte 2
 FloorNumber:               ; Current Floor Number
     .byte 1
 FloorBits:
@@ -84,10 +81,7 @@ FloorBits:
                            ; which can then be compared with FloorQueue to
                            ; determine if we need to open/close the door
 FloorQueue:                ; Multiple requests can be queued up
-    .byte 2 ; Maximum of 10 floors in the queue - may have to increase size
-            ; e.g. .byte 5, 4 bits to represent a floor number ??
-DoorStatus:
-    .byte 1 ; Status can be: closing, closed, opening, open
+    .byte 2 ; Each bit represents a floor (obviously not all bits used
 CurrentPattern:
     .byte 2
 
@@ -147,9 +141,9 @@ RESET:
     ; Set CurrentPattern
     lds r24, CurrentPattern
     lds r25, CurrentPattern+1
-    ldi  r24, low(DOOR_MOVING_UP)
+    ldi  r24, low(LIFT_MOVING_UP)
     sts CurrentPattern, r24
-    ldi  r24, high(DOOR_MOVING_UP)
+    ldi  r24, high(LIFT_MOVING_UP)
     sts CurrentPattern+1, r24
     clr r24
 
@@ -195,8 +189,6 @@ Timer0OVF:
     push temp1                      ; Prologue starts
     push temp2
     push temp3
-    push YH                         ; Save all conflict registers in the prologue
-    push YL
     push r29
     push r28
     push r27
@@ -234,25 +226,36 @@ Timer0OVF:
         ldi temp1, high(ONE_SECOND)
         cpi r24, low(ONE_SECOND)
         cpc r25, temp1
-        brne NotSecond
+        breq OneSecond
+        rjmp NotSecond
+
+    OneSecond:
+        clear TempCounter
 
         ; Update Second Counter
         lds r28, SecondCounter
         lds r29, SecondCounter+1
         adiw r29:r28, 1
-        sts SecondCounter, r28
-        sts SecondCounter+1, r29
-        clear TempCounter
 
     CheckMoving:
-        has_floor_calls
+        clr r24
+        clr r25
+        lds r24, FloorQueue
+        lds r25, FloorQueue+1
+        cpi r24, 0x00
         breq NoCalls
+
         compare_status_bit MOVING_ON
         brne jump_MoveLift
-        cpi r28, 9 ; Lift travels for 2 seconds - double check TIMER0 settings.
-                   ; 2 seconds is too quick. Need to use 5. Maybe prescaler is wrong?
-        breq ReachedFloor
+        do_lcd_data 'L'
+        print_digit r28 ; TODO: NOTE: FIXME Frozen somewhere around here
+                        ; Something to do with PWM/motor ?? Can you output to it
+                        ; without using PWM ? Try using regular PORTs
 
+        cpi r28, 2 ; Lift travels for 2 seconds - double check TIMER0 settings.
+        sts SecondCounter, r28
+        sts SecondCounter+1, r29
+        brge ReachedFloor
         lds temp2, CurrentPattern
         lds temp3, CurrentPattern+1
         lsl temp2
@@ -281,6 +284,8 @@ KeepDebouncing:
 ReachedFloor:
     push temp2
     push temp1
+    push r27
+    push r26
     push r25
     push r24
 
@@ -288,9 +293,9 @@ ReachedFloor:
 
     clr r24
     clr r25
-    ldi r24, 0b00000001 ; use temp2 as a temporary floor rep
+    ldi r24, 0b00000001
     lds temp1, FloorNumber
-    get_floor_in_bits r24, r25
+    get_floor_in_bits r24, r25 ; FloorBits (need to update FloorBits in SRAM)
 
     lcd_clear_prompt      ; print FloorNumber to LCD
     lcd_pre_prompt
@@ -305,10 +310,14 @@ ReachedFloor:
     clr temp1
     sts OCR3BH, temp1
 
+    ; If floor is in queue then
     ; Open/Close doors
+    ; drop floor from queue
 
     pop r24
     pop r25
+    pop r26
+    pop r27
     pop temp1
     pop temp2
     rjmp EndIF
@@ -320,8 +329,6 @@ EndIF:
     pop r27
     pop r28
     pop r29
-    pop YL
-    pop YH
     pop temp3
     pop temp2
     pop temp1
@@ -341,104 +348,105 @@ MoveLift: ; Activate lift
     clr r30 ; LOWER FLOORS BOOLEAN
     clr r31 ; HIGHER FLOORS BOOLEAN
     clear SecondCounter ; reset the SecondCounter
+    clear TempCounter
     set_status_bit_on MOVING_ON ; the lift is moving
 
-    ; scan FloorQueue
-    ; determine if going UP or DOWN
-    lds r26, FloorBits
-    lds r27, FloorBits+1
-    lds r24, FloorQueue
-    lds r25, FloorQueue+1
+    ; ; scan FloorQueue
+    ; ; determine if going UP or DOWN
+    ; lds r26, FloorBits
+    ; lds r27, FloorBits+1
+    ; lds r24, FloorQueue
+    ; lds r25, FloorQueue+1
 
-    ; scan by taking current floor bits do max floor - curr floor and shift left
-    ; that many times.
-    ldi temp2, MAX_FLOOR
-    lds temp3, FloorNumber
-    sub temp2, temp3 ; MAX_FLOOR - current floor number
-                     ; temp2 holds counter for left shifting for scannning
-                     ; currently off-by-one error MAX - INITIAL FLOOR = 9
-                     ; but since we're on Floor 0 we only need to shift 8 times
-                     ; Fine for now. Add a subi temp2, 1 later.
-    ; lcd_clear_prompt
-    ScanHigher:
-        cpi temp2, 1
-        brlt ScanLowerPre
-        dec temp2
-        lsl r26          ; left shift r27:r26 (FloorBits) to check if any floors
-        rol r27          ; called that are HIGHER than the current floor
+    ; ; scan by taking current floor bits do max floor - curr floor and shift left
+    ; ; that many times.
+    ; ldi temp2, MAX_FLOOR
+    ; lds temp3, FloorNumber
+    ; sub temp2, temp3 ; MAX_FLOOR - current floor number
+    ;                  ; temp2 holds counter for left shifting for scannning
+    ;                  ; currently off-by-one error MAX - INITIAL FLOOR = 9
+    ;                  ; but since we're on Floor 0 we only need to shift 8 times
+    ;                  ; Fine for now. Add a subi temp2, 1 later.
+    ; ; lcd_clear_prompt
+    ; ScanHigher:
+    ;     cpi temp2, 1
+    ;     brlt ScanLowerPre
+    ;     dec temp2
+    ;     lsl r26          ; left shift r27:r26 (FloorBits) to check if any floors
+    ;     rol r27          ; called that are HIGHER than the current floor
 
-        push r26
-        push r27
-        and r26, r24
-        and r27, r25
-        cpi r26, 0
-        brne SetDirUpTrue
-        cpi r27, 0       ; if r27:r26 == 0, then floor is not set/called
-        brne SetDirUpTrue
-        pop r27
-        pop r26
-        rjmp ScanHigher
+    ;     push r26
+    ;     push r27
+    ;     and r26, r24
+    ;     and r27, r25
+    ;     cpi r26, 0
+    ;     brne SetDirUpTrue
+    ;     cpi r27, 0       ; if r27:r26 == 0, then floor is not set/called
+    ;     brne SetDirUpTrue
+    ;     pop r27
+    ;     pop r26
+    ;     rjmp ScanHigher
 
-    ; set a bool for higher floors if you find one
-    SetDirUpTrue:
-        ser r31
+    ; ; set a bool for higher floors if you find one
+    ; SetDirUpTrue:
+    ;     ser r31
 
-    ; and vice versa for lowers
-    ScanLowerPre:
-        lds r26, FloorBits ; Reset r27:r26 to current floor's bits
-        lds r27, FloorBits+1
-        lds temp2, FloorNumber
-        ldi temp3, MIN_FLOOR
-        sub temp2, temp3
-        ScanLower:
-            cpi temp2, 0
-            breq SetDirUp
-            dec temp2
-            lsr r26
-            rol r27
+    ; ; and vice versa for lower floors
+    ; ScanLowerPre:
+    ;     lds r26, FloorBits ; Reset r27:r26 to current floor's bits
+    ;     lds r27, FloorBits+1
+    ;     lds temp2, FloorNumber
+    ;     ldi temp3, MIN_FLOOR
+    ;     sub temp2, temp3
+    ;     ScanLower:
+    ;         cpi temp2, 0
+    ;         breq SetDirUp
+    ;         dec temp2
+    ;         lsr r26
+    ;         ror r27
 
-            push r26
-            push r27
-            and r26, r24
-            and r27, r25
-            cpi r26, 0
-            brne SetDirDownTrue
-            cpi r27, 0       ; if r27:r26 == 0, then floor is not set/called
-            brne SetDirDownTrue
-            pop r27
-            pop r26
-            rjmp ScanLower
+    ;         push r26
+    ;         push r27
+    ;         and r26, r24
+    ;         and r27, r25
+    ;         cpi r26, 0
+    ;         brne SetDirDownTrue
+    ;         cpi r27, 0       ; if r27:r26 == 0, then floor is not set/called
+    ;         brne SetDirDownTrue
+    ;         pop r27
+    ;         pop r26
+    ;         rjmp ScanLower
 
-    SetDirDownTrue:
-        ser r30
+    ; SetDirDownTrue:
+    ;     ser r30
 
-    ; if found both then continue in curr dir
-    ; else change as appropriate
-    cpi r31, 0xFF ; No higher floors if not equal
-    brne SetDirDown
-    cpi r30, 0xFF ; No lower floors if not equal
-    brne SetDirUp
-    rjmp ContinueInCurrentDirection
+    ; ; if found both then continue in curr dir
+    ; ; else change as appropriate
+    ; cpi r31, 0xFF ; No higher floors if not equal
+    ; brne SetDirDown
+    ; cpi r30, 0xFF ; No lower floors if not equal
+    ; brne SetDirUp
+    ; rjmp ContinueInCurrentDirection
 
-    SetDirDown:
-        set_status_bit_off DIR_DOWN
-        rjmp ContinueInCurrentDirection
+    ; SetDirDown:
+    ;     set_status_bit_off DIR_DOWN
+    ;     rjmp ContinueInCurrentDirection
 
-    SetDirUp:
-        set_status_bit_on DIR_UP
+    ; SetDirUp:
+    ;     set_status_bit_on DIR_UP
 
     ContinueInCurrentDirection:
         ; Spin Motor
         ldi temp2, MOTOR_ON
         sts OCR3BL, temp2
-        clr temp2
-        sts OCR3BH, temp2
+        ; clr temp2
+        ; sts OCR3BH, temp2
 
         ; out shifting pattern to LEDs
-        ldi temp3, low(DOOR_MOVING_UP)
+        ldi temp3, low(LIFT_MOVING_UP)
         out PORTC, temp3
         sts CurrentPattern, temp3
-        ldi temp3, high(DOOR_MOVING_UP)
+        ldi temp3, high(LIFT_MOVING_UP)
         sts CurrentPattern+1, temp3
 
     pop r30
@@ -534,7 +542,7 @@ jump_main1:
 emergency_end:
     lcd_clear_prompt
     lcd_pre_prompt
-    do_lcd_data '0' ; since we should be on Floor 0 - maybe change this to the 'CURRENT' floor
+    print_current_floor
     set_status_bit_off EMERGENCY_OFF
     rjmp main
 
@@ -578,7 +586,9 @@ call_floor: ; Adds the called floor to the FloorQueue
     mov temp2, r25
     update_floor_queue temp1, temp2
 
+    ; do_lcd_data '#'
     ; print_queue
+    ; do_lcd_data '#'
 
     pop r24
     pop r25
@@ -589,33 +599,18 @@ call_floor: ; Adds the called floor to the FloorQueue
 end: rjmp end
 
 ;#######################
-;#   LIFT FUNCTIONS    #
-;#######################
-call_lift:
-    ; add floor to the queue (bit string?)
-    push temp1
-    push r24
-    push r25
-
-    ; Get the bit string for Floors
-    ; Bit 0 = Not Called
-    ; Bit 1 = Called
-
-    pop r25
-    pop r24
-    pop temp1
-
-;#######################
 ;#    LCD FUNCTIONS    #
 ;#######################
 ; Send a command to the LCD (r16)
 lcd_command:
+  push temp1
   out PORTF, temp1
   rcall sleep_1ms
   lcd_set LCD_E
   rcall sleep_1ms
   lcd_clr LCD_E
   rcall sleep_1ms
+  pop temp1
   ret
 
 lcd_data:

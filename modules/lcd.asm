@@ -10,15 +10,19 @@
 ; 4 cycles per iteration - setup/call-return overhead
 
 .macro do_lcd_command
+  push temp1
   ldi temp1, @0
   rcall lcd_command
   rcall lcd_wait
+  pop temp1
 .endmacro
 
 .macro do_lcd_data
+  push temp1
   ldi temp1, @0
   rcall lcd_data
   rcall lcd_wait
+  pop temp1
 .endmacro
 
 .macro lcd_set
