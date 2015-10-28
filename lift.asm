@@ -4,7 +4,7 @@
 .equ TWO_SECONDS    = 7812 * 2
 .equ THREE_SECONDS  = 7812 * 3
 .equ PATTERN_SHIFT_INTERVAL = 7812 * 2 / 8
-.equ DEBOUNCE_LIMIT = 1560
+.equ DEBOUNCE_LIMIT = 3120
 
 .equ MAX_FLOOR = 9
 .equ MIN_FLOOR = 0
@@ -247,10 +247,6 @@ Timer0OVF:
 
         compare_status_bit MOVING_ON
         brne jump_MoveLift
-        do_lcd_data 'L'
-        print_digit r28 ; TODO: NOTE: FIXME Frozen somewhere around here
-                        ; Something to do with PWM/motor ?? Can you output to it
-                        ; without using PWM ? Try using regular PORTs
 
         cpi r28, 2 ; Lift travels for 2 seconds - double check TIMER0 settings.
         sts SecondCounter, r28
@@ -296,6 +292,8 @@ ReachedFloor:
     ldi r24, 0b00000001
     lds temp1, FloorNumber
     get_floor_in_bits r24, r25 ; FloorBits (need to update FloorBits in SRAM)
+    sts FloorBits, r24
+    sts FloorBits+1, r25
 
     lcd_clear_prompt      ; print FloorNumber to LCD
     lcd_pre_prompt
@@ -313,6 +311,16 @@ ReachedFloor:
     ; If floor is in queue then
     ; Open/Close doors
     ; drop floor from queue
+    com r24
+    com r25
+    lds r26, FloorQueue
+    lds r27, FloorQueue+1
+    and r26, r24
+    and r27, r25
+    sts FloorQueue, r26
+    sts FloorQueue+1, r27
+
+    print_queue
 
     pop r24
     pop r25
@@ -526,8 +534,8 @@ zero:
 
 star:
     ; TODO: jmp to Emergency Function, stop all activity and goto Floor 0
-    ; Emergency Function: Do Open/Close process at Floor 0. Strobe LED should
-    ; blink several times.
+    ; Emergency Function: Do Open/Close process at Floor 0.
+    ; Strobe LED should blink several times.
     compare_status_bit DEBOUNCE_ON
     breq jump_main1
     set_status_bit_on DEBOUNCE_ON
@@ -585,10 +593,6 @@ call_floor: ; Adds the called floor to the FloorQueue
     mov temp1, r24
     mov temp2, r25
     update_floor_queue temp1, temp2
-
-    ; do_lcd_data '#'
-    ; print_queue
-    ; do_lcd_data '#'
 
     pop r24
     pop r25
