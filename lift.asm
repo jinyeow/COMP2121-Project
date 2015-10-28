@@ -243,6 +243,8 @@ Timer0OVF:
         lds r24, FloorQueue
         lds r25, FloorQueue+1
         cpi r24, 0x00
+        ldi temp1, 0x00
+        cpc r25, temp1
         breq NoCalls
 
         compare_status_bit MOVING_ON
@@ -309,7 +311,8 @@ ReachedFloor:
     sts OCR3BH, temp1
 
     ; If floor is in queue then
-    ; Open/Close doors
+    ; TODO: Open/Close doors
+
     ; drop floor from queue
     com r24
     com r25
