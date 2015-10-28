@@ -92,6 +92,9 @@ CurrentPattern:
 .cseg
 .org 0x0000
     jmp RESET
+.org INT0addr
+    jmp EXT_INT0
+
     jmp DEFAULT                     ; no handling for IRQ0
     jmp DEFAULT                     ; no handling for IRQ1
 .org OVF0addr
@@ -176,6 +179,13 @@ RESET:
     sts TCCR3B, temp1
     ldi temp1, (1<<WGM30)|(1<<COM3B1)
     sts TCCR3A, temp1
+
+    ; PB0 Setup
+    ldi temp1, (2 << ISC00)              ; set INT0 as falling-
+    sts EICRA, temp1                     ; edge triggered interrupt
+    in temp1, EIMSK                      ; enable INT0
+    ori temp1, (1<<INT0)
+    out EIMSK, temp1
 
     ; Initialise Lift on Floor 0
     lcd_clear_prompt
@@ -521,6 +531,9 @@ MoveLift: ; Activate lift
     pop temp2
     pop temp3
     rjmp EndIF
+
+EXT_INT0:
+    nop
 
 ;#######################
 ;#      MAIN CODE      #
