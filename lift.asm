@@ -242,6 +242,33 @@ Timer0OVF:
         lds r29, SecondCounter+1
         adiw r29:r28, 1
 
+    CheckDoorProcess:
+        ; check if door moving
+        compare_status_bit DOOR_MOV
+        brne CheckOpenDoor
+        ; if door is moving then you've either reached a floor and it is opening
+        compare_status_bit DOOR_IS_OPEN
+        breq DoorClosing
+        set_status_bit_off DOOR_NOT_MOV
+        set_status_bit_on DOOR_OPEN
+        ; out the OPEN pattern to LEDS
+        ldi temp1, 0x03
+        out PORTC, temp1
+        out PORTG, temp1
+        asd: rjmp asd
+        ; or its open and it is closing
+        DoorClosing:
+            ; out the 0xFF pattern
+            ser temp1
+            ; set DOOR_NOT_MOV
+            ; set DOOR_IS_CLOSED
+
+    CheckOpenDoor:
+        ; for if the DOOR is NOT MOVing AND the DOOR is OPEN
+        ; wait 3 sec
+        ; then set DOOR_MOV to begin closing
+
+
     CheckMoving:
         clr r24
         clr r25
@@ -320,9 +347,25 @@ ReachedFloor:
     clr temp1
     sts OCR3BH, temp1
 
-    ; If floor is in queue then
+    ; If Floor is in Queue then
     ; TODO: Open/Close doors
+    ; NOTE: Put this in the Timer0OVF routine I think.
+    ; compare FloorBits with FloorQueue
+    lds r4, FloorQueue
+    lds r5, FloorQueue+1
 
+    and r24, r4
+    cpi r24, 0x00
+    brne StartOpenProcess
+    and r25, r5
+    cpi r25, 0x00
+    brne StartOpenProcess
+    rjmp FloorNotInQueue
+
+    StartOpenProcess:
+        set_status_bit_on DOOR_MOV
+
+    FloorNotInQueue:
     ; drop floor from queue
     com r24
     com r25
@@ -372,8 +415,7 @@ MoveLift: ; Activate lift
     clear TempCounter
     set_status_bit_on MOVING_ON ; the lift is moving
 
-    ; scan FloorQueue FIXME
-    ; determine if going UP or DOWN
+    ; Scan FloorQueue and determine if going UP or DOWN
     lds r26, FloorBits
     lds r27, FloorBits+1
     mov r6, r26 ; make a copy of the FloorBits (current floor represented as bits)
