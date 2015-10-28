@@ -287,8 +287,16 @@ ReachedFloor:
     push r25
     push r24
 
+    ; Depending on the DIRECTION either add or sub 1
+    compare_status_bit DIR_UP
+    brne GoingDown
     update_floor_number 1 ; update FloorNumber
+    rjmp AfterUpdateFloorNumber
 
+    GoingDown:
+        update_floor_number -1
+
+    AfterUpdateFloorNumber:
     clr r24
     clr r25
     ldi r24, 0b00000001
@@ -323,7 +331,7 @@ ReachedFloor:
     sts FloorQueue, r26
     sts FloorQueue+1, r27
 
-    print_queue
+    ; print_queue ; for debugging
 
     pop r24
     pop r25
@@ -362,12 +370,18 @@ MoveLift: ; Activate lift
     clear TempCounter
     set_status_bit_on MOVING_ON ; the lift is moving
 
-    ; ; scan FloorQueue
-    ; ; determine if going UP or DOWN
-    ; lds r26, FloorBits
-    ; lds r27, FloorBits+1
-    ; lds r24, FloorQueue
-    ; lds r25, FloorQueue+1
+    ; scan FloorQueue FIXME
+    ; determine if going UP or DOWN
+    lds r26, FloorBits
+    lds r27, FloorBits+1
+    lds r24, FloorQueue
+    lds r25, FloorQueue+1
+
+    cp r26, r24   ; If FloorQueue < FloorBits then that means only Lower Floors
+                  ; were called. Therefore DIR DOWN
+    cpc r27, r25
+    brge SetDirDown
+    rjmp SetDirUp
 
     ; ; scan by taking current floor bits do max floor - curr floor and shift left
     ; ; that many times.
@@ -378,7 +392,6 @@ MoveLift: ; Activate lift
     ;                  ; currently off-by-one error MAX - INITIAL FLOOR = 9
     ;                  ; but since we're on Floor 0 we only need to shift 8 times
     ;                  ; Fine for now. Add a subi temp2, 1 later.
-    ; ; lcd_clear_prompt
     ; ScanHigher:
     ;     cpi temp2, 1
     ;     brlt ScanLowerPre
@@ -439,12 +452,12 @@ MoveLift: ; Activate lift
     ; brne SetDirUp
     ; rjmp ContinueInCurrentDirection
 
-    ; SetDirDown:
-    ;     set_status_bit_off DIR_DOWN
-    ;     rjmp ContinueInCurrentDirection
+    SetDirDown:
+        set_status_bit_off DIR_DOWN
+        rjmp ContinueInCurrentDirection
 
-    ; SetDirUp:
-    ;     set_status_bit_on DIR_UP
+    SetDirUp:
+        set_status_bit_on DIR_UP
 
     ContinueInCurrentDirection:
         ; Spin Motor
