@@ -1,8 +1,11 @@
 .include "m2560def.inc"
 
-.equ ONE_SECOND     = 7812
+;#######################
+;#   GLOBAL EQUS       #
+;#######################
+.equ ONE_SECOND      = 7812
 .equ STROBE_INTERVAL = 7812 / 8
-.equ DEBOUNCE_LIMIT = 3120
+.equ DEBOUNCE_LIMIT  = 3120
 
 .equ MAX_FLOOR = 9
 .equ MIN_FLOOR = 0
@@ -14,16 +17,19 @@
 .equ DOOR_OPEN   = 0x81
 .equ DOOR_CLOSED = 0xFF
 
-.equ LIFT_MOVING_UP = 0x1C1C
-.equ LIFT_MOVING_DOWN = 0x3838
+.equ LIFT_MOVING_UP   = 0x1C1C  ; these aren't really used anymore.
+.equ LIFT_MOVING_DOWN = 0x3838  ; Instead I'm shifting one led light up/down
 
 .equ MOTOR_OFF   = 0x00
 .equ MOTOR_ON    = 0xFF
 
-; LIFT "STATUS" REGISTER
+;#######################
+; LIFT "STATUS" REG    #
+;#######################
 ; bit 0 is emergency bit, set if * pressed, else clear
 .def status           = r22
 
+; strobe "pattern" basically is either 0x00 (off) or 0xFF (on)
 .def strobe_pattern   = r9
 
 ;#######################
@@ -49,7 +55,7 @@
 .include "modules/macros.asm"
 
 ;#######################
-;#      MACROS         #
+;#    FLOOR MACROS     #
 ;#######################
 .macro print_current_floor
     lds r2, FloorNumber
@@ -96,6 +102,8 @@ CurrentPattern:            ; Pattern for the LEDs to represent moving/doors/lift
     jmp RESET
 .org INT0addr
     jmp EXT_INT0
+.org INT1addr
+    jmp EXT_INT1
 
     jmp DEFAULT                     ; no handling for IRQ0
     jmp DEFAULT                     ; no handling for IRQ1
@@ -187,6 +195,13 @@ RESET:
     sts EICRA, temp1                     ; edge triggered interrupt
     in temp1, EIMSK                      ; enable INT0
     ori temp1, (1<<INT0)
+    out EIMSK, temp1
+
+    ; PB1 Setup
+    ldi temp1, (2 << ISC00)              ; set INT1 as falling-
+    sts EICRA, temp1                     ; edge triggered interrupt
+    in temp1, EIMSK                      ; enable INT1
+    ori temp1, (1<<INT1)
     out EIMSK, temp1
 
     ; Strobe Light Setup
@@ -567,7 +582,7 @@ MoveLift: ; Activate lift
     pop temp3
     rjmp EndIF
 
-EXT_INT0:
+EXT_INT0: ; "Close" button
     push temp1
     in temp1, SREG
     push temp1
@@ -584,6 +599,31 @@ EXT_INT0:
     clear SecondCounter
 
 END_INT0:
+    pop temp1
+    out SREG, temp1
+    pop temp1
+    reti
+
+EXT_INT1: ; "Open" button
+    push temp1
+    in temp1, SREG
+    push temp1
+
+    ; TODO
+    ; if lift stopped at a floor (i.e. MOVING_OFF)
+    ; set DOOR_MOV/DOOR_IS_CLOSED so that the Open/Close Sequence starts
+
+    ; TODO
+    ; if Open is pushed while lift is closing (i.e. DOOR_MOV + DOOR_IS_OPEN)
+    ; set DOOR_MOV/DOOR_IS_CLOSED so that it restarts Open/Close Sequence
+
+    ; TODO
+    ; if Open is held down, door remains open (set DOOR_NOT_MOV + DOOR_IS_OPEN)
+
+    ; TODO
+    ; Open should not work between floors (i.e. only when MOVING_OFF is set)
+
+END_INT1:
     pop temp1
     out SREG, temp1
     pop temp1
