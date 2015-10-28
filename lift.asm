@@ -17,6 +17,7 @@
 .equ DOOR_CLOSED = 0xFF
 
 .equ LIFT_MOVING_UP = 0x1C1C
+.equ LIFT_MOVING_DOWN = 0x3838
 
 .equ MOTOR_OFF   = 0x00
 .equ MOTOR_ON    = 0xFF
@@ -113,6 +114,8 @@ RESET:
     ser temp1                ; PORTC is output
     out DDRC, temp1
     out PORTC, temp1         ; out PORTC all LEDs lit up
+    out DDRG, temp1
+    out PORTG, temp1
 
     ser temp1
     out DDRF, temp1
@@ -125,6 +128,7 @@ RESET:
     ; ldi temp1, DOOR_OPEN
     ldi temp1, DOOR_CLOSED
     out PORTC, temp1
+    out PORTG, temp1
 
     ; Clear Counters
     clear TempCounter                 ; Initialize the temporary counter to 0
@@ -137,6 +141,7 @@ RESET:
     ; Set FloorBits to Floor 0 initially.
     ldi r24, FLOOR_0
     sts FloorBits, r24
+    sts CurrentPattern, r24
 
     ; Set CurrentPattern
     lds r24, CurrentPattern
@@ -254,13 +259,10 @@ Timer0OVF:
         sts SecondCounter, r28
         sts SecondCounter+1, r29
         brge ReachedFloor
-        lds temp2, CurrentPattern
-        lds temp3, CurrentPattern+1
-        lsl temp2
-        rol temp3
-        out PORTC, temp3
-        sts CurrentPattern, temp2
-        sts CurrentPattern+1, temp3
+        lds r26, CurrentPattern
+        lds r27, CurrentPattern+1
+        out PORTC, r26
+        out PORTG, r27
 
     ; Count Time for Door open/close + Lift Travel
     NoCalls:
@@ -374,6 +376,10 @@ MoveLift: ; Activate lift
     ; determine if going UP or DOWN
     lds r26, FloorBits
     lds r27, FloorBits+1
+
+    out PORTC, r26
+    out PORTG, r27
+
     lds r24, FloorQueue
     lds r25, FloorQueue+1
 
@@ -454,9 +460,13 @@ MoveLift: ; Activate lift
 
     SetDirDown:
         set_status_bit_off DIR_DOWN
+        lsr r26
+        ror r27
         rjmp ContinueInCurrentDirection
 
     SetDirUp:
+        lsl r26
+        rol r27
         set_status_bit_on DIR_UP
 
     ContinueInCurrentDirection:
@@ -466,12 +476,10 @@ MoveLift: ; Activate lift
         ; clr temp2
         ; sts OCR3BH, temp2
 
-        ; out shifting pattern to LEDs
-        ldi temp3, low(LIFT_MOVING_UP)
-        out PORTC, temp3
-        sts CurrentPattern, temp3
-        ldi temp3, high(LIFT_MOVING_UP)
-        sts CurrentPattern+1, temp3
+    ; out shifting pattern to LEDs
+
+    sts CurrentPattern, r26
+    sts CurrentPattern+1, r27
 
     pop r30
     pop r31
