@@ -1,9 +1,7 @@
 .include "m2560def.inc"
 
 .equ ONE_SECOND     = 7812
-.equ TWO_SECONDS    = 7812 * 2
-.equ THREE_SECONDS  = 7812 * 3
-.equ PATTERN_SHIFT_INTERVAL = 7812 * 2 / 8
+.equ STROBE_INTERVAL = 7812 / 8
 .equ DEBOUNCE_LIMIT = 3120
 
 .equ MAX_FLOOR = 9
@@ -25,6 +23,8 @@
 ; LIFT "STATUS" REGISTER
 ; bit 0 is emergency bit, set if * pressed, else clear
 .def status           = r22
+
+.def strobe_pattern   = r9
 
 ;#######################
 ;#   KEYPAD DEFS       #
@@ -73,6 +73,8 @@ SecondCounter:
     .byte 2
 DebounceCounter:
     .byte 2
+LightCounter:              ; holds counter for Strobe Light on/off
+    .byte 2
 FloorNumber:               ; Current Floor Number
     .byte 1
 FloorBits:
@@ -82,8 +84,8 @@ FloorBits:
                            ; which can then be compared with FloorQueue to
                            ; determine if we need to open/close the door
 FloorQueue:                ; Multiple requests can be queued up
-    .byte 2 ; Each bit represents a floor (obviously not all bits used
-CurrentPattern:
+    .byte 2                ; Each bit represents a floor (obviously not all bits used)
+CurrentPattern:            ; Pattern for the LEDs to represent moving/doors/lift
     .byte 2
 
 ;#######################
@@ -187,6 +189,12 @@ RESET:
     ori temp1, (1<<INT0)
     out EIMSK, temp1
 
+    ; Strobe Light Setup
+    ser temp1                ; PORTB is output
+    out DDRB, temp1
+    clr temp1
+    out PORTB, temp1         ; strobe should be off unless emergency
+
     ; Initialise Lift on Floor 0
     lcd_clear_prompt
     lcd_pre_prompt
@@ -238,11 +246,32 @@ Timer0OVF:
         lds r25, TempCounter+1
         adiw r25:r24, 1
 
-        ldi temp1, high(ONE_SECOND)
-        cpi r24, low(ONE_SECOND)
-        cpc r25, temp1
-        breq OneSecond
-        rjmp NotSecond
+        ; check if EMERGENCY_ON
+        compare_status_bit EMERGENCY_ON
+        brne CheckOneSecond
+        lds r26, LightCounter
+        lds r27, LightCounter+1
+        adiw r27:r26, 1
+        ; if so then, every ONE_SECOND / 10 flash the strobe
+        ldi temp1, high(STROBE_INTERVAL)
+        cpi r26, low(STROBE_INTERVAL)
+        cpc r27, temp1
+        brne NotStrobeTime
+        clear LightCounter
+        com strobe_pattern
+        out PORTB, strobe_pattern
+        rjmp CheckOneSecond
+
+        NotStrobeTime:
+            sts LightCounter, r26
+            sts LightCounter+1, r27
+
+        CheckOneSecond:
+            ldi temp1, high(ONE_SECOND)
+            cpi r24, low(ONE_SECOND)
+            cpc r25, temp1
+            breq OneSecond
+            rjmp NotSecond
 
     OneSecond:
         clear TempCounter
@@ -645,8 +674,11 @@ emergency_end:
     lcd_pre_prompt
     print_current_floor
     set_status_bit_off EMERGENCY_OFF
+    eor strobe_pattern, strobe_pattern
     rjmp main
 
+; TODO: set strobe light to blink several times per second
+; strobe is the LED pin next to MOT connect to PORTB (PB1)
 emergency_start:
     lcd_clear_prompt
     lcd_emergency_message
