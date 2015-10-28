@@ -728,7 +728,8 @@ emergency_end:
     lcd_pre_prompt   ; where 'N' is the current floor
     print_current_floor
     set_status_bit_off EMERGENCY_OFF ; clear EMERGENCY bit in "STATUS" reg
-    eor strobe_pattern, strobe_pattern ; Turn off the strobe
+    clr strobe_pattern ; Turn off the strobe
+    out PORTB, strobe_pattern
     rjmp main
 
 ; strobe is the LED pin next to MOT connect to PORTB (PB1)
