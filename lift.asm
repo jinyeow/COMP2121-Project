@@ -533,7 +533,26 @@ MoveLift: ; Activate lift
     rjmp EndIF
 
 EXT_INT0:
-    nop
+    push temp1
+    in temp1, SREG
+    push temp1
+
+    compare_status_bit DOOR_IS_OPEN
+    brne END_INT0
+
+    compare_status_bit DEBOUNCE_ON    ; Debouncing
+    breq END_INT0
+    set_status_bit_on DEBOUNCE_ON
+
+    set_status_bit_on DOOR_MOV
+    set_status_bit_on DOOR_IS_OPEN
+    clear SecondCounter
+
+END_INT0:
+    pop temp1
+    out SREG, temp1
+    pop temp1
+    reti
 
 ;#######################
 ;#      MAIN CODE      #
