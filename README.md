@@ -48,5 +48,5 @@ remain open until the button is released.
   4. The Open button will *NOT* function while the lift is moving between floors.
 
 ### Other Documentation for Submission:
-* User Manual
-* Design Manual
+* [User Manual] (../docs/User_Manual.docx)
+* [Design Manual] (../docs/Design_Manual.docx)
