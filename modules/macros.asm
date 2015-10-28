@@ -33,19 +33,19 @@
 ;   5 => DOOR OPEN/CLOSE
 
 ; Constants defined to set/clr bits in the Lift "STATUS" register (r22)
-.equ CLEAR_FLAGS   = 0x00
-.equ EMERGENCY_ON  = 0b00000001
-.equ EMERGENCY_OFF = 0b11111110 ; can use com instruction with a temp reg instead?
-.equ DEBOUNCE_ON   = 0b00000010
-.equ DEBOUNCE_OFF  = 0b11111101
-.equ MOVING_ON     = 0b00000100
-.equ MOVING_OFF    = 0b11111011
-.equ DIR_UP        = 0b00001000
-.equ DIR_DOWN      = 0b11110111
-.equ DOOR_MOV      = 0b00010000
-.equ DOOR_NOT_MOV  = 0b11101111
-.equ DOOR_IS_OPEN  = 0b00100000
-.equ DOOR_IS_CLOSE = 0b11011111
+.equ CLEAR_FLAGS    = 0x00
+.equ EMERGENCY_ON   = 0b00000001
+.equ EMERGENCY_OFF  = 0b11111110 ; can use com instruction with a temp reg instead?
+.equ DEBOUNCE_ON    = 0b00000010
+.equ DEBOUNCE_OFF   = 0b11111101
+.equ MOVING_ON      = 0b00000100
+.equ MOVING_OFF     = 0b11111011
+.equ DIR_UP         = 0b00001000
+.equ DIR_DOWN       = 0b11110111
+.equ DOOR_MOV       = 0b00010000
+.equ DOOR_NOT_MOV   = 0b11101111
+.equ DOOR_IS_OPEN   = 0b00100000
+.equ DOOR_IS_CLOSED = 0b11011111
 
 ; For the following macros, @0 should be one of the above defined constants
 .macro set_status_bit_on

@@ -250,26 +250,56 @@ Timer0OVF:
         compare_status_bit DOOR_IS_OPEN
         breq DoorClosing
         set_status_bit_off DOOR_NOT_MOV
-        set_status_bit_on DOOR_OPEN
-        ; out the OPEN pattern to LEDS
-        ldi temp1, 0x03
+        set_status_bit_on DOOR_IS_OPEN
+        ; out the OPENing pattern to LEDS
+        ldi temp1, 0xB5     ; door moving pattern
         out PORTC, temp1
+        ldi temp1, 0x02
         out PORTG, temp1
-        asd: rjmp asd
+
+        cpi r28, 1
+        sts SecondCounter, r28
+        sts SecondCounter+1, r29
+        brne jump_no_calls
+        clear SecondCounter ; This takes 1 second only
         ; or its open and it is closing
+        jump_no_calls:
+            rjmp NoCalls
         DoorClosing:
-            ; out the 0xFF pattern
-            ser temp1
             ; set DOOR_NOT_MOV
+            set_status_bit_off DOOR_NOT_MOV
             ; set DOOR_IS_CLOSED
+            set_status_bit_off DOOR_IS_CLOSED
+            ldi temp1, 0xB5     ; door moving pattern
+            out PORTC, temp1
+            ldi temp1, 0x02
+            out PORTG, temp1
+            clear SecondCounter
+            rjmp NoCalls
 
     CheckOpenDoor:
         ; for if the DOOR is NOT MOVing AND the DOOR is OPEN
+        compare_status_bit DOOR_IS_OPEN
+        brne CheckMoving
+        ldi temp1, 0x03   ; this is the DOOR_IS_OPEN pattern
+        out PORTC, temp1
+        out PORTG, temp1
         ; wait 3 sec
+        sts SecondCounter, r28
+        sts SecondCounter+1, r29
+        cpi r28, 3
+        brne NoCalls
         ; then set DOOR_MOV to begin closing
-
+        set_status_bit_on DOOR_MOV
+        clear SecondCounter
+        rjmp NoCalls
 
     CheckMoving:
+        ; out the 0xFF pattern
+        ser temp1
+        out PORTC, temp1
+        ldi temp1, 0x03
+        out PORTG, temp1
         clr r24
         clr r25
         lds r24, FloorQueue
@@ -348,8 +378,7 @@ ReachedFloor:
     sts OCR3BH, temp1
 
     ; If Floor is in Queue then
-    ; TODO: Open/Close doors
-    ; NOTE: Put this in the Timer0OVF routine I think.
+    ; Open/Close doors
     ; compare FloorBits with FloorQueue
     lds r4, FloorQueue
     lds r5, FloorQueue+1
@@ -364,6 +393,11 @@ ReachedFloor:
 
     StartOpenProcess:
         set_status_bit_on DOOR_MOV
+        ldi temp1, 0xB5
+        out PORTC, temp1
+        ldi temp1, 0x02
+        out PORTG, temp1
+        clear SecondCounter
 
     FloorNotInQueue:
     ; drop floor from queue
