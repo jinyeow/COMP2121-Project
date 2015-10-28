@@ -533,7 +533,7 @@ MoveLift: ; Activate lift
     mov r4, r24 ; make a copy of the Queue
     mov r5, r25
 
-    cp r26, r24   ; If FloorQueue < FloorBits then that means only Lower Floors
+    cp r26, r24   ; If FloorBits > FloorQueue then that means only Lower Floors
                   ; were called. Therefore DIR DOWN
     cpc r27, r25
     brge SetDirDown
@@ -740,6 +740,7 @@ emergency_start:
     lds r24, FloorNumber ; If already at Floor 0 do nothing
     cpi r24, 0
     brne ForceLiftToZero
+    set_status_bit_on DOOR_IS_OPEN
     rjmp main
 
     ForceLiftToZero:
