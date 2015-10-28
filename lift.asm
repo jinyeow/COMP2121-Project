@@ -609,18 +609,23 @@ EXT_INT1: ; "Open" button
     in temp1, SREG
     push temp1
 
-    ; TODO
     ; if lift stopped at a floor (i.e. MOVING_OFF)
-    ; set DOOR_MOV/DOOR_IS_CLOSED so that the Open/Close Sequence starts
+    compare_status_bit MOVING_ON
+    breq END_INT1
 
-    ; TODO
+    compare_status_bit DEBOUNCE_ON    ; Debouncing
+    breq END_INT0
+    set_status_bit_on DEBOUNCE_ON
+
+    ; set DOOR_MOV/DOOR_IS_CLOSED so that the Open/Close Sequence starts
+    set_status_bit_on DOOR_MOV
+    set_status_bit_off DOOR_IS_CLOSED
+
     ; if Open is pushed while lift is closing (i.e. DOOR_MOV + DOOR_IS_OPEN)
     ; set DOOR_MOV/DOOR_IS_CLOSED so that it restarts Open/Close Sequence
 
-    ; TODO
     ; if Open is held down, door remains open (set DOOR_NOT_MOV + DOOR_IS_OPEN)
 
-    ; TODO
     ; Open should not work between floors (i.e. only when MOVING_OFF is set)
 
 END_INT1:
