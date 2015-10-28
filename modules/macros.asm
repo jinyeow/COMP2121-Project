@@ -94,46 +94,6 @@
     pop temp1
 .endmacro
 
-; Move the "current floor" represented by a bit in a WORD up
-.macro move_current_floor_up
-    push temp1
-    push r25
-    push r24
-
-    lds r24, FloorBits
-    lds r25, FloorBits+1
-
-    lsl r24
-    rol r25
-
-    sts FloorBits, r24
-    sts FloorBits+1, r25
-
-    pop r24
-    pop r25
-    pop temp1
-.endmacro
-
-; Move the "current floor" represented by a bit in a WORD down
-.macro move_current_floor_down
-    push temp1
-    push r25
-    push r24
-
-    lds r24, FloorBits
-    lds r25, FloorBits+1
-
-    lsr r24
-    ror r25
-
-    sts FloorBits, r24
-    sts FloorBits+1, r25
-
-    pop r24
-    pop r25
-    pop temp1
-.endmacro
-
 .macro update_floor_queue
     push temp2
     push temp1
@@ -154,29 +114,7 @@
     pop temp2
 .endmacro
 
-.macro no_floor_calls
-    push temp1
-    push r25
-    push r24
-
-    clr r24
-    clr r25
-    lds r24, FloorQueue
-    lds r25, FloorQueue+1
-
-    ; print_digit r25 ; FloorQueue is not set?
-    ; do_lcd_data ':'
-    ; print_digit r24 ; for some reason r25:r24 == 0:0
-    clr temp1
-    cpi r24, 0
-    cpc r25, temp1
-
-    pop r24
-    pop r25
-    pop temp1
-.endmacro
-
-.macro print_queue
+.macro print_queue ; used for DEBUG purposes to see the FloorQueue
     push temp1
     push r25
     push r24
