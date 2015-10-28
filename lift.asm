@@ -374,10 +374,16 @@ ReachedFloor:
     sts FloorBits, r24
     sts FloorBits+1, r25
 
-    lcd_clear_prompt      ; print FloorNumber to LCD
-    lcd_pre_prompt
-    print_current_floor
+    compare_status_bit EMERGENCY_ON
+    brne PrintFloor
+    rjmp AfterPrint
 
+    PrintFloor:
+        lcd_clear_prompt      ; print FloorNumber to LCD
+        lcd_pre_prompt
+        print_current_floor
+
+    AfterPrint:
     clear SecondCounter
     set_status_bit_off MOVING_OFF
 
@@ -644,7 +650,28 @@ emergency_end:
 emergency_start:
     lcd_clear_prompt
     lcd_emergency_message
-    set_status_bit_on EMERGENCY_ON
+    set_status_bit_on EMERGENCY_ON ; set EMERGENCY_ON bit in "STATUS" register (r22)
+
+    ; if door is open close it
+    compare_status_bit DOOR_IS_OPEN
+    brne StopOpening
+    set_status_bit_on DOOR_MOV
+
+    ; if door is opening close it
+    StopOpening:
+        compare_status_bit DOOR_MOV
+        brne SkipForceClose
+        set_status_bit_on DOOR_IS_OPEN
+
+    SkipForceClose:
+    clear SecondCounter
+    ldi r24, FLOOR_0
+    sts FloorQueue, r24
+    sts FloorBits, r24
+    clr r24
+    sts FloorQueue+1, r24
+    sts FloorBits+1, r24
+    set_status_bit_off DIR_DOWN
     rjmp main
 
 convert_end:
