@@ -48,5 +48,5 @@ remain open until the button is released.
   4. The Open button will *NOT* function while the lift is moving between floors.
 
 ### Other Documentation for Submission:
-* [User Manual] (../docs/User_Manual.docx)
-* [Design Manual] (../docs/Design_Manual.docx)
+* [User Manual] (https://github.com/jinyeow/COMP2121-Project/blob/master/docs/User_Manual.docx)
+* [Design Manual] (https://github.com/jinyeow/COMP2121-Project/blob/master/docs/Design_Manual.docx)
